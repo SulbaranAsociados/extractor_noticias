@@ -9,8 +9,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copiar el código
-COPY scraper_supabase.py .
+COPY scraper_vilaseca.py .
 
 # Ejecutar el script
-CMD ["python", "scraper_supabase.py"]
+CMD ["python", "scraper_vilaseca.py"]
 ```
