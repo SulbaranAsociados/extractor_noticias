@@ -102,7 +102,7 @@ def scrape_diari_tarragona():
             title_tag = article_tag.find(['h2', 'h3'], class_='c-article__title')
             if title_tag and title_tag.find('a'):
                 title = title_tag.text.strip()
-                if 'vila-seca' in title.lower() or 'vilaseca' in title.lower():
+                if 'vila-seca' in title.lower() or 'vilaseca' in title.lower() or 'pineda' in title.lower():
                     link = title_tag.find('a')['href']
                     full_url = urljoin(main_url, link)
                     articles_found.append({
@@ -183,14 +183,14 @@ def get_article_details(article_url, source):
 def scrape_job():
     """Función principal que orquesta el proceso de scraping y guardado."""
     logging.info("=" * 80)
-    logging.info("--- Iniciando el proceso de scraping ---")
+    logging.info("--- Iniciando el proceso de scraping (ejecución única) ---")
     logging.info(f"Fecha y hora: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}")
     logging.info("=" * 80)
     
     conn = get_db_connection()
     if not conn:
-        logging.error("No se pudo establecer conexión con la base de datos. Se reintentará en el próximo ciclo.")
-        return
+        logging.error("No se pudo establecer conexión con la base de datos. Abortando.")
+        return # Termina la ejecución si no hay conexión
         
     try:
         with conn.cursor() as cursor:
@@ -198,7 +198,7 @@ def scrape_job():
             
             articles_to_fetch = scrape_diari_tarragona() + scrape_vilaseca_cat()
             if not articles_to_fetch:
-                logging.info("No se encontraron artículos para procesar.")
+                logging.info("No se encontraron artículos nuevos para procesar.")
                 return
 
             new_articles_count = 0
@@ -221,7 +221,6 @@ def scrape_job():
             conn.commit()
             logging.info("=" * 80)
             logging.info(f"--- Proceso de scraping finalizado. {new_articles_count} artículos nuevos guardados. ---")
-            logging.info(f"Próxima ejecución en {SCRAPE_INTERVAL_HOURS} horas")
             logging.info("=" * 80)
 
     except psycopg2.Error as e:
@@ -235,40 +234,18 @@ def scrape_job():
             conn.close()
             logging.info("Conexión a la base de datos cerrada.")
 
-def main():
-    """Punto de entrada principal con scheduler."""
-    logging.info("🚀 Iniciando servicio de scraping de noticias de Vila-seca")
-    logging.info(f"📅 Intervalo de scraping configurado: cada {SCRAPE_INTERVAL_HOURS} horas")
+if __name__ == "__main__":
+    """
+    Punto de entrada principal para la ejecución como script o cron job.
+    """
+    logging.info("🚀 Iniciando scraper de noticias de Vila-seca (ejecución única).")
     
     # Validar variables de entorno críticas
     if not all([SUPABASE_HOST, SUPABASE_PASSWORD]):
-        logging.error("❌ ERROR: Variables de entorno SUPABASE_HOST y SUPABASE_PASSWORD son obligatorias")
-        logging.error("El servicio no puede continuar sin estas variables.")
-        return
+        logging.error("❌ ERROR: Variables de entorno SUPABASE_HOST y SUPABASE_PASSWORD son obligatorias.")
+        logging.error("El script no puede continuar sin estas variables.")
+    else:
+        scrape_job()
     
-    # Ejecutar scraping inmediatamente al iniciar
-    logging.info("🔄 Ejecutando primer scraping...")
-    scrape_job()
-    
-    # Programar ejecuciones periódicas
-    schedule.every(SCRAPE_INTERVAL_HOURS).hours.do(scrape_job)
-    
-    logging.info(f"✅ Scheduler iniciado correctamente")
-    logging.info(f"⏰ Próxima ejecución programada en {SCRAPE_INTERVAL_HOURS} horas")
-    logging.info("🔄 El servicio está corriendo... (Presiona Ctrl+C para detener)")
-    
-    # Mantener el servicio corriendo
-    while True:
-        try:
-            schedule.run_pending()
-            time.sleep(60)  # Verificar cada minuto si hay tareas pendientes
-        except KeyboardInterrupt:
-            logging.info("\n👋 Servicio detenido por el usuario")
-            break
-        except Exception as e:
-            logging.error(f"❌ Error en el loop principal: {e}")
-            logging.info("⏳ Esperando 60 segundos antes de continuar...")
-            time.sleep(60)
+    logging.info("✅ Fin del script de scraping.")
 
-if __name__ == "__main__":
-    main()
