@@ -5,20 +5,18 @@ FROM python:3.12-slim
 WORKDIR /app
 
 # Instala las dependencias del scraper
-COPY requirements-scraper.txt .
-RUN pip install --no-cache-dir -r requirements-scraper.txt
+# CORRECCIÓN: Ahora busca el archivo "requirements.txt"
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copia el script del scraper
 COPY scraper_vilaseca.py .
 
-# Comando para ejecutar el script.
-# Se ejecutará una vez y luego el contenedor terminará.
-# Ideal para un Cron Job en Easypanel.
+# Comando para ejecutar el script, que se ejecutará 24/7
+# y se auto-programará.
 #
 # NOTA IMPORTANTE: Asegúrate de configurar las siguientes variables de entorno en Easypanel:
 # - SUPABASE_HOST
 # - SUPABASE_PASSWORD
-# - SUPABASE_USER (opcional)
-# - SUPABASE_DB (opcional)
-# - SUPABASE_PORT (opcional)
+# - SCRAPE_INTERVAL_HOURS
 CMD ["python", "scraper_vilaseca.py"]
